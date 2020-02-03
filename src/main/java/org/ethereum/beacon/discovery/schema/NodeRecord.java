@@ -4,7 +4,12 @@
 
 package org.ethereum.beacon.discovery.schema;
 
+import static org.ethereum.beacon.discovery.schema.EnrField.IP_V4;
+import static org.ethereum.beacon.discovery.schema.EnrField.UDP_V4;
+
 import com.google.common.base.Objects;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -16,6 +21,7 @@ import java.util.stream.Collectors;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.MutableBytes;
 import org.apache.tuweni.units.bigints.UInt64;
+import org.ethereum.beacon.discovery.util.Functions;
 import org.javatuples.Pair;
 import org.web3j.rlp.RlpEncoder;
 import org.web3j.rlp.RlpList;
@@ -42,6 +48,10 @@ public class NodeRecord {
   // optional fields
   private Map<String, Object> fields = new HashMap<>();
   private IdentitySchemaInterpreter identitySchemaInterpreter;
+
+  public void setIdentitySchemaInterpreter(IdentitySchemaInterpreter schemaInterpreter) {
+    this.identitySchemaInterpreter = schemaInterpreter;
+  }
 
   private NodeRecord(
       IdentitySchemaInterpreter identitySchemaInterpreter, UInt64 seq, Bytes signature) {
@@ -76,6 +86,27 @@ public class NodeRecord {
       String key = new String(((RlpString) rawFields.get(i)).getBytes());
       nodeRecord.set(key, enrFieldInterpreter.decode(key, (RlpString) rawFields.get(i + 1)));
     }
+    return nodeRecord;
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public static NodeRecord createNodeRecord(byte[] privateKey, String networkInterface, int port)
+      throws UnknownHostException {
+    Bytes localAddressBytes =
+        Bytes.wrap(InetAddress.getByName(networkInterface).getAddress()); // 172.18.0.2 // 127.0.0.1
+    Bytes localIp =
+        Bytes.concatenate(Bytes.wrap(new byte[4 - localAddressBytes.size()]), localAddressBytes);
+    NodeRecord nodeRecord =
+        NodeRecordFactory.DEFAULT.createFromValues(
+            UInt64.ZERO,
+            Pair.with(EnrField.ID, IdentitySchema.V4),
+            Pair.with(IP_V4, localIp),
+            Pair.with(
+                EnrFieldV4.PKEY_SECP256K1,
+                Functions.derivePublicKeyFromPrivate(Bytes.wrap(privateKey))),
+            Pair.with(UDP_V4, port));
+    nodeRecord.sign(Bytes.wrap(privateKey));
+    nodeRecord.verify();
     return nodeRecord;
   }
 
@@ -188,9 +219,20 @@ public class NodeRecord {
     return identitySchemaInterpreter.getNodeId(this);
   }
 
+  public Object getPort() {
+    return fields.get(EnrFieldV4.UDP_V4);
+  }
+
+  public Object getPubKey() {
+    return fields.get(EnrFieldV4.PKEY_SECP256K1);
+  }
+
+  public Object getIPAddress() {
+    return fields.get(EnrFieldV4.IP_V4);
+  }
   @Override
   public String toString() {
-    return "NodeRecordV4{"
+    return "NodeRecordV4,"+this.getPort()+"{"
         + "publicKey="
         + fields.get(EnrFieldV4.PKEY_SECP256K1)
         + ", ipV4address="

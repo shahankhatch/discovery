@@ -13,16 +13,19 @@ import org.ethereum.beacon.discovery.pipeline.Field;
 import org.ethereum.beacon.discovery.pipeline.HandlerUtil;
 import org.ethereum.beacon.discovery.processor.DiscoveryV5MessageProcessor;
 import org.ethereum.beacon.discovery.processor.MessageProcessor;
+import org.ethereum.beacon.discovery.schema.NodeRecord;
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory;
 import org.ethereum.beacon.discovery.schema.NodeSession;
 
 public class MessageHandler implements EnvelopeHandler {
   private static final Logger logger = LogManager.getLogger(MessageHandler.class);
+//  private final NodeRecord homeNode;
   private final MessageProcessor messageProcessor;
 
-  public MessageHandler(NodeRecordFactory nodeRecordFactory) {
+  public MessageHandler(NodeRecord homeNode, NodeRecordFactory nodeRecordFactory) {
+//    this.homeNode = homeNode;
     this.messageProcessor =
-        new MessageProcessor(new DiscoveryV5MessageProcessor(nodeRecordFactory));
+        new MessageProcessor(new DiscoveryV5MessageProcessor(homeNode, nodeRecordFactory));
     ;
   }
 

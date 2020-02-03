@@ -10,10 +10,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes;
 import org.ethereum.beacon.discovery.DiscoveryManager;
 import org.ethereum.beacon.discovery.scheduler.ExpirationScheduler;
 import org.ethereum.beacon.discovery.scheduler.Scheduler;
+import org.ethereum.beacon.discovery.schema.NodeRecord;
 import org.ethereum.beacon.discovery.schema.NodeRecordInfo;
 
 /**
@@ -22,12 +25,16 @@ import org.ethereum.beacon.discovery.schema.NodeRecordInfo;
  * received.
  */
 public class LiveCheckTasks {
+  private static final Logger logger = LogManager.getLogger();
+
   private final Scheduler scheduler;
+  private final NodeRecord nodeRecord;
   private final DiscoveryManager discoveryManager;
   private final Set<Bytes> currentTasks = Sets.newConcurrentHashSet();
   private final ExpirationScheduler<Bytes> taskTimeouts;
 
-  public LiveCheckTasks(DiscoveryManager discoveryManager, Scheduler scheduler, Duration timeout) {
+  public LiveCheckTasks(NodeRecord nodeRecord, DiscoveryManager discoveryManager, Scheduler scheduler, Duration timeout) {
+    this.nodeRecord = nodeRecord;
     this.discoveryManager = discoveryManager;
     this.scheduler = scheduler;
     this.taskTimeouts =
@@ -37,6 +44,7 @@ public class LiveCheckTasks {
   public void add(NodeRecordInfo nodeRecordInfo, Runnable successCallback, Runnable failCallback) {
     synchronized (this) {
       if (currentTasks.contains(nodeRecordInfo.getNode().getNodeId())) {
+        logger.debug(() -> String.format("On %s, currentTasks already contains nodeRecordInfo: %s", this.nodeRecord, nodeRecordInfo));
         return;
       }
       currentTasks.add(nodeRecordInfo.getNode().getNodeId());
@@ -55,6 +63,7 @@ public class LiveCheckTasks {
                   failCallback.run();
                   currentTasks.remove(nodeRecordInfo.getNode().getNodeId());
                 } else {
+                  logger.debug(() -> String.format("On %s, currentTask callback completed successfully: %s", this.nodeRecord, nodeRecordInfo));
                   successCallback.run();
                   currentTasks.remove(nodeRecordInfo.getNode().getNodeId());
                 }

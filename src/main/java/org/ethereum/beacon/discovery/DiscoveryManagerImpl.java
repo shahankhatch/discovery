@@ -85,25 +85,25 @@ public class DiscoveryManagerImpl implements DiscoveryManager {
             nodeTable,
             outgoingPipeline);
     incomingPipeline
-        .addHandler(new IncomingDataPacker())
+        .addHandler(new IncomingDataPacker(homeNode))
         .addHandler(new WhoAreYouAttempt(homeNode.getNodeId()))
-        .addHandler(new WhoAreYouSessionResolver(authTagRepo))
+        .addHandler(new WhoAreYouSessionResolver(homeNode, authTagRepo))
         .addHandler(new UnknownPacketTagToSender(homeNode))
         .addHandler(nodeIdToSession)
         .addHandler(new UnknownPacketTypeByStatus())
         .addHandler(new NotExpectedIncomingPacketHandler())
         .addHandler(new WhoAreYouPacketHandler(outgoingPipeline, taskScheduler))
         .addHandler(
-            new AuthHeaderMessagePacketHandler(outgoingPipeline, taskScheduler, nodeRecordFactory))
+            new AuthHeaderMessagePacketHandler(outgoingPipeline, taskScheduler, nodeRecordFactory, nodeTable))
         .addHandler(new MessagePacketHandler())
-        .addHandler(new MessageHandler(nodeRecordFactory))
+        .addHandler(new MessageHandler(homeNode, nodeRecordFactory))
         .addHandler(new BadPacketHandler());
     outgoingPipeline
         .addHandler(new OutgoingParcelHandler(outgoingSink))
         .addHandler(new NodeSessionRequestHandler())
         .addHandler(nodeIdToSession)
         .addHandler(new NewTaskHandler())
-        .addHandler(new NextTaskHandler(outgoingPipeline, taskScheduler));
+        .addHandler(new NextTaskHandler(homeNode, outgoingPipeline, taskScheduler));
   }
 
   @Override

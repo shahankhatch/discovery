@@ -12,6 +12,7 @@ import org.ethereum.beacon.discovery.pipeline.Envelope;
 import org.ethereum.beacon.discovery.pipeline.EnvelopeHandler;
 import org.ethereum.beacon.discovery.pipeline.Field;
 import org.ethereum.beacon.discovery.pipeline.HandlerUtil;
+import org.ethereum.beacon.discovery.schema.NodeRecord;
 import org.ethereum.beacon.discovery.schema.NodeSession;
 import org.ethereum.beacon.discovery.storage.AuthTagRepository;
 
@@ -21,9 +22,11 @@ import org.ethereum.beacon.discovery.storage.AuthTagRepository;
  */
 public class WhoAreYouSessionResolver implements EnvelopeHandler {
   private static final Logger logger = LogManager.getLogger(WhoAreYouSessionResolver.class);
+  private final NodeRecord nodeRecord;
   private final AuthTagRepository authTagRepo;
 
-  public WhoAreYouSessionResolver(AuthTagRepository authTagRepo) {
+  public WhoAreYouSessionResolver(NodeRecord nodeRecord, AuthTagRepository authTagRepo) {
+    this.nodeRecord = nodeRecord;
     this.authTagRepo = authTagRepo;
   }
 
@@ -61,7 +64,7 @@ public class WhoAreYouSessionResolver implements EnvelopeHandler {
       logger.trace(
           () ->
               String.format(
-                  "Session resolved: %s in envelope #%s",
+                  "On %s, Session resolved: %s in envelope #%s", this.nodeRecord,
                   nodeSessionOptional.get(), envelope.getId()));
     } else {
       envelope.put(Field.BAD_PACKET, envelope.get(Field.PACKET_WHOAREYOU));

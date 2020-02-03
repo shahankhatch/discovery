@@ -28,10 +28,7 @@ public class NodeBucket {
   /** Bucket size, number of nodes */
   public static final int K = 16;
 
-  private static final Predicate<NodeRecordInfo> FILTER =
-      nodeRecord -> nodeRecord.getStatus().equals(NodeStatus.ACTIVE);
-  private final TreeSet<NodeRecordInfo> bucket =
-      new TreeSet<>((o1, o2) -> o2.getNode().hashCode() - o1.getNode().hashCode());
+  private final ArrayList<NodeRecordInfo> bucket = new ArrayList<>();
 
   public static NodeBucket fromRlpBytes(Bytes bytes, NodeRecordFactory nodeRecordFactory) {
     NodeBucket nodeBucket = new NodeBucket();
@@ -46,34 +43,7 @@ public class NodeBucket {
   }
 
   public synchronized boolean put(NodeRecordInfo nodeRecord) {
-    if (FILTER.test(nodeRecord)) {
-      if (!bucket.contains(nodeRecord)) {
-        boolean modified = bucket.add(nodeRecord);
-        if (bucket.size() > K) {
-          NodeRecordInfo worst = null;
-          for (NodeRecordInfo nodeRecordInfo : bucket) {
-            if (worst == null) {
-              worst = nodeRecordInfo;
-            } else if (worst.getLastRetry() > nodeRecordInfo.getLastRetry()) {
-              worst = nodeRecordInfo;
-            }
-          }
-          bucket.remove(worst);
-        }
-        return modified;
-      } else {
-        NodeRecordInfo bucketNode = bucket.subSet(nodeRecord, true, nodeRecord, true).first();
-        if (nodeRecord.getLastRetry() > bucketNode.getLastRetry()) {
-          bucket.remove(bucketNode);
-          bucket.add(nodeRecord);
-          return true;
-        }
-      }
-    } else {
-      return bucket.remove(nodeRecord);
-    }
-
-    return false;
+    return bucket.add(nodeRecord);
   }
 
   public boolean contains(NodeRecordInfo nodeRecordInfo) {
@@ -101,6 +71,6 @@ public class NodeBucket {
   }
 
   public List<NodeRecordInfo> getNodeRecords() {
-    return new ArrayList<>(bucket);
+    return bucket;
   }
 }

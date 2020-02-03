@@ -33,14 +33,15 @@ public class IdentitySchemaV4Interpreter implements IdentitySchemaInterpreter {
   public Bytes getNodeId(NodeRecord nodeRecord) {
     verify(nodeRecord);
     Bytes pkey = (Bytes) nodeRecord.getKey(EnrFieldV4.PKEY_SECP256K1);
-    ECPoint pudDestPoint = Functions.publicKeyToPoint(pkey);
-    Bytes xPart =
-        Bytes.wrap(
-            Utils.extractBytesFromUnsignedBigInt(pudDestPoint.getXCoord().toBigInteger(), 32));
-    Bytes yPart =
-        Bytes.wrap(
-            Utils.extractBytesFromUnsignedBigInt(pudDestPoint.getYCoord().toBigInteger(), 32));
-    return Functions.hashKeccak(Bytes.concatenate(xPart, yPart));
+//    ECPoint pudDestPoint = Functions.publicKeyToPoint(pkey);
+//    Bytes xPart =
+//        Bytes.wrap(
+//            Utils.extractBytesFromUnsignedBigInt(pudDestPoint.getXCoord().toBigInteger(), 32));
+//    Bytes yPart =
+//        Bytes.wrap(
+//            Utils.extractBytesFromUnsignedBigInt(pudDestPoint.getYCoord().toBigInteger(), 32));
+//    return Functions.hashKeccak(Bytes.concatenate(xPart, yPart));
+    return Functions.hashKeccak(pkey);
   }
 
   @Override

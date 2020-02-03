@@ -7,10 +7,13 @@ package org.ethereum.beacon.discovery.task;
 import static org.ethereum.beacon.discovery.schema.NodeStatus.DEAD;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes;
 import org.ethereum.beacon.discovery.DiscoveryManager;
 import org.ethereum.beacon.discovery.scheduler.Scheduler;
@@ -23,16 +26,17 @@ import org.ethereum.beacon.discovery.util.Functions;
 
 /** Manages recurrent node check task(s) */
 public class DiscoveryTaskManager {
-  private static final int LIVE_CHECK_DISTANCE = 100;
-  private static final int RECURSIVE_LOOKUP_DISTANCE = 100;
+  Logger logger = LogManager.getLogger();
+  private static final int LIVE_CHECK_DISTANCE = 255;
+  private static final int RECURSIVE_LOOKUP_DISTANCE = 256;
   private static final int STATUS_EXPIRATION_SECONDS = 600;
   private static final int LIVE_CHECK_INTERVAL_SECONDS = 1;
-  private static final int RECURSIVE_LOOKUP_INTERVAL_SECONDS = 10;
+  private static final int RECURSIVE_LOOKUP_INTERVAL_SECONDS = 3;
   private static final int RETRY_TIMEOUT_SECONDS = 60;
   private static final int MAX_RETRIES = 10;
   private final Scheduler scheduler;
   private final Bytes homeNodeId;
-  private final LiveCheckTasks liveCheckTasks;
+//  private final LiveCheckTasks liveCheckTasks;
   private final RecursiveLookupTasks recursiveLookupTasks;
   private final NodeTable nodeTable;
   private final NodeBucketStorage nodeBucketStorage;
@@ -84,16 +88,18 @@ public class DiscoveryTaskManager {
         if (nodeRecord.getStatus() == NodeStatus.ACTIVE
             && nodeRecord.getLastRetry() > currentTime - STATUS_EXPIRATION_SECONDS) {
           return true;
-        }
 
-        return false;
+        }
+        logger.debug(() -> String.format("Recursive filter is false for: %s", nodeRecord));
+//        return false;
+        return true;
       };
 
   /** Checks whether node is eligible to be considered as dead */
   private final Predicate<NodeRecordInfo> DEAD_RULE =
       nodeRecord -> nodeRecord.getRetry() >= MAX_RETRIES;
 
-  private final Consumer<NodeRecord>[] nodeRecordUpdatesConsumers;
+  private final Collection<Consumer<NodeRecord>> nodeRecordUpdatesConsumers;
   private boolean resetDead;
   private boolean removeDead;
 
@@ -120,24 +126,24 @@ public class DiscoveryTaskManager {
       Scheduler scheduler,
       boolean resetDead,
       boolean removeDead,
-      Consumer<NodeRecord>... nodeRecordUpdatesConsumers) {
+      Collection<Consumer<NodeRecord>> nodeRecordUpdatesConsumers) {
     this.scheduler = scheduler;
     this.nodeTable = nodeTable;
     this.nodeBucketStorage = nodeBucketStorage;
     this.homeNodeId = homeNode.getNodeId();
-    this.liveCheckTasks =
-        new LiveCheckTasks(discoveryManager, scheduler, Duration.ofSeconds(RETRY_TIMEOUT_SECONDS));
+//    this.liveCheckTasks =
+//        new LiveCheckTasks(nodeTable.getHomeNode(), discoveryManager, scheduler, Duration.ofSeconds(RETRY_TIMEOUT_SECONDS));
     this.recursiveLookupTasks =
         new RecursiveLookupTasks(
-            discoveryManager, scheduler, Duration.ofSeconds(RETRY_TIMEOUT_SECONDS));
+            nodeTable.getHomeNode(), discoveryManager, scheduler, Duration.ofSeconds(RETRY_TIMEOUT_SECONDS));
     this.resetDead = resetDead;
     this.removeDead = removeDead;
     this.nodeRecordUpdatesConsumers = nodeRecordUpdatesConsumers;
   }
 
   public void start() {
-    scheduler.executeAtFixedRate(
-        Duration.ZERO, Duration.ofSeconds(LIVE_CHECK_INTERVAL_SECONDS), this::liveCheckTask);
+//    scheduler.executeAtFixedRate(
+//        Duration.ofMinutes(5), Duration.ofSeconds(LIVE_CHECK_INTERVAL_SECONDS), this::liveCheckTask);
     scheduler.executeAtFixedRate(
         Duration.ZERO,
         Duration.ofSeconds(RECURSIVE_LOOKUP_INTERVAL_SECONDS),
@@ -181,36 +187,39 @@ public class DiscoveryTaskManager {
     }
 
     // Live check task
-    closestNodes
-        .filter(LIVE_CHECK_NODE_RULE)
-        .forEach(
-            nodeRecord ->
-                liveCheckTasks.add(
-                    nodeRecord,
-                    () ->
-                        updateNode(
-                            nodeRecord,
-                            new NodeRecordInfo(
-                                nodeRecord.getNode(), Functions.getTime(), NodeStatus.ACTIVE, 0)),
-                    () ->
-                        updateNode(
-                            nodeRecord,
-                            new NodeRecordInfo(
-                                nodeRecord.getNode(),
-                                Functions.getTime(),
-                                NodeStatus.SLEEP,
-                                (nodeRecord.getRetry() + 1)))));
+//    closestNodes
+//        .filter(LIVE_CHECK_NODE_RULE)
+//        .forEach(
+//            nodeRecord ->
+//                liveCheckTasks.add(
+//                    nodeRecord,
+//                    () ->
+//                        updateNode(
+//                            nodeRecord,
+//                            new NodeRecordInfo(
+//                                nodeRecord.getNode(), Functions.getTime(), NodeStatus.ACTIVE, 0)),
+//                    () ->
+//                        updateNode(
+//                            nodeRecord,
+//                            new NodeRecordInfo(
+//                                nodeRecord.getNode(),
+//                                Functions.getTime(),
+//                                NodeStatus.SLEEP,
+//                                (nodeRecord.getRetry() + 1)))));
   }
 
   private void recursiveLookupTask() {
     List<NodeRecordInfo> nodes = nodeTable.findClosestNodes(homeNodeId, RECURSIVE_LOOKUP_DISTANCE);
     nodes.stream()
+        .peek(n -> logger.debug(() -> String.format("checking recursive task for node %s: ",n)))
         .filter(RECURSIVE_LOOKUP_NODE_RULE)
+        .peek(n -> logger.debug(() -> String.format("accepted recursive task for node %s: ",n)))
         .forEach(
             nodeRecord ->
                 recursiveLookupTasks.add(
                     nodeRecord,
-                    () -> {},
+//                    () -> { nodeTable.save(nodeRecord); nodeBucketStorage.put(nodeRecord); },
+                    () -> { },
                     () ->
                         updateNode(
                             nodeRecord,

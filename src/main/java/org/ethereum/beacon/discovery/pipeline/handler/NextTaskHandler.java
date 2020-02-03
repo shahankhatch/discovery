@@ -20,6 +20,7 @@ import org.ethereum.beacon.discovery.pipeline.Pipeline;
 import org.ethereum.beacon.discovery.pipeline.info.GeneralRequestInfo;
 import org.ethereum.beacon.discovery.pipeline.info.RequestInfo;
 import org.ethereum.beacon.discovery.scheduler.Scheduler;
+import org.ethereum.beacon.discovery.schema.NodeRecord;
 import org.ethereum.beacon.discovery.schema.NodeSession;
 import org.ethereum.beacon.discovery.task.TaskMessageFactory;
 import org.ethereum.beacon.discovery.task.TaskStatus;
@@ -27,11 +28,13 @@ import org.ethereum.beacon.discovery.task.TaskStatus;
 /** Gets next request task in session and processes it */
 public class NextTaskHandler implements EnvelopeHandler {
   private static final Logger logger = LogManager.getLogger(NextTaskHandler.class);
-  private static final int DEFAULT_DELAY_MS = 1000;
+  private static final int DEFAULT_DELAY_MS = 1;
+  private final NodeRecord nodeRecord;
   private final Pipeline outgoingPipeline;
   private final Scheduler scheduler;
 
-  public NextTaskHandler(Pipeline outgoingPipeline, Scheduler scheduler) {
+  public NextTaskHandler(NodeRecord nodeRecord, Pipeline outgoingPipeline, Scheduler scheduler) {
+    this.nodeRecord = nodeRecord;
     this.outgoingPipeline = outgoingPipeline;
     this.scheduler = scheduler;
   }
@@ -64,7 +67,7 @@ public class NextTaskHandler implements EnvelopeHandler {
     NodeSession session = (NodeSession) envelope.get(Field.SESSION);
     Optional<RequestInfo> requestInfoOpt = session.getFirstAwaitRequestInfo();
     if (!requestInfoOpt.isPresent()) {
-      logger.trace(() -> String.format("Envelope %s: no awaiting requests", envelope.getId()));
+      logger.trace(() -> String.format("On %s, Envelope %s: no awaiting requests", nodeRecord, envelope.getId()));
       return;
     }
 
@@ -72,7 +75,7 @@ public class NextTaskHandler implements EnvelopeHandler {
     logger.trace(
         () ->
             String.format(
-                "Envelope %s: processing awaiting request %s", envelope.getId(), requestInfo));
+                "On %s, Envelope %s: processing awaiting request %s", nodeRecord, envelope.getId(), requestInfo));
     Bytes authTag = session.generateNonce();
     Bytes requestId = requestInfo.getRequestId();
     if (session.getStatus().equals(NodeSession.SessionStatus.INITIAL)) {

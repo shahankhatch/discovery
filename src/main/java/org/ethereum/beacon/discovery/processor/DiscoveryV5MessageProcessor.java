@@ -15,6 +15,7 @@ import org.ethereum.beacon.discovery.message.handler.MessageHandler;
 import org.ethereum.beacon.discovery.message.handler.NodesHandler;
 import org.ethereum.beacon.discovery.message.handler.PingHandler;
 import org.ethereum.beacon.discovery.message.handler.PongHandler;
+import org.ethereum.beacon.discovery.schema.NodeRecord;
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory;
 import org.ethereum.beacon.discovery.schema.NodeSession;
 import org.ethereum.beacon.discovery.schema.Protocol;
@@ -30,12 +31,14 @@ public class DiscoveryV5MessageProcessor implements DiscoveryMessageProcessor<Di
   private final Map<MessageCode, MessageHandler> messageHandlers = new HashMap<>();
 
   private final NodeRecordFactory nodeRecordFactory;
+  private final NodeRecord homeNode;
 
-  public DiscoveryV5MessageProcessor(NodeRecordFactory nodeRecordFactory) {
+  public DiscoveryV5MessageProcessor(NodeRecord homeNode, NodeRecordFactory nodeRecordFactory) {
+    this.homeNode = homeNode;
     messageHandlers.put(MessageCode.PING, new PingHandler());
     messageHandlers.put(MessageCode.PONG, new PongHandler());
-    messageHandlers.put(MessageCode.FINDNODE, new FindNodeHandler());
-    messageHandlers.put(MessageCode.NODES, new NodesHandler());
+    messageHandlers.put(MessageCode.FINDNODE, new FindNodeHandler(homeNode));
+    messageHandlers.put(MessageCode.NODES, new NodesHandler(homeNode));
     this.nodeRecordFactory = nodeRecordFactory;
   }
 
@@ -49,7 +52,7 @@ public class DiscoveryV5MessageProcessor implements DiscoveryMessageProcessor<Di
   public void handleMessage(DiscoveryV5Message message, NodeSession session) {
     MessageCode code = message.getCode();
     MessageHandler messageHandler = messageHandlers.get(code);
-    logger.trace(() -> String.format("Handling message %s in session %s", message, session));
+    logger.trace(() -> String.format("On %s, Handling message %s in session %s", this.homeNode, message, session));
     if (messageHandler == null) {
       throw new RuntimeException("Not implemented yet");
     }

@@ -63,10 +63,10 @@ public class WhoAreYouPacketHandler implements EnvelopeHandler {
     WhoAreYouPacket packet = (WhoAreYouPacket) envelope.get(Field.PACKET_WHOAREYOU);
     NodeSession session = (NodeSession) envelope.get(Field.SESSION);
     try {
-      NodeRecord respRecord = null;
-      if (packet.getEnrSeq().compareTo(session.getHomeNodeRecord().getSeq()) < 0) {
+      NodeRecord respRecord;
+//      if (packet.getEnrSeq().compareTo(session.getHomeNodeRecord().getSeq()) < 0) {
         respRecord = session.getHomeNodeRecord();
-      }
+//      }
       Bytes remotePubKey = (Bytes) session.getNodeRecord().getKey(EnrFieldV4.PKEY_SECP256K1);
       byte[] ephemeralKeyBytes = new byte[32];
       Functions.getRandom().nextBytes(ephemeralKeyBytes);
@@ -117,7 +117,7 @@ public class WhoAreYouPacketHandler implements EnvelopeHandler {
               packet, session.getNodeRecord(), session.getStatus());
       logger.error(error, ex);
       envelope.remove(Field.PACKET_WHOAREYOU);
-      session.cancelAllRequests("Bad WHOAREYOU received from node");
+//      session.cancelAllRequests("Bad WHOAREYOU received from node");
       return;
     } catch (Throwable ex) {
       String error =
@@ -126,7 +126,7 @@ public class WhoAreYouPacketHandler implements EnvelopeHandler {
               packet, session.getNodeRecord(), session.getStatus());
       logger.error(error, ex);
       envelope.remove(Field.PACKET_WHOAREYOU);
-      session.cancelAllRequests("Bad WHOAREYOU received from node");
+//      session.cancelAllRequests("Bad WHOAREYOU received from node");
       return;
     }
     session.setStatus(NodeSession.SessionStatus.AUTHENTICATED);

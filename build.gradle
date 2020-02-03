@@ -81,7 +81,7 @@ tasks.withType(JavaCompile) {
       '-Xlint:divzero',
       '-Xlint:finally',
       '-Xlint:static',
-      '-Werror',
+//      '-Werror',
   ]
 
   options.errorprone {

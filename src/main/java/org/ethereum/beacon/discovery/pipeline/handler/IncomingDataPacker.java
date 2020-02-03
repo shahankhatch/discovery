@@ -12,10 +12,19 @@ import org.ethereum.beacon.discovery.pipeline.Envelope;
 import org.ethereum.beacon.discovery.pipeline.EnvelopeHandler;
 import org.ethereum.beacon.discovery.pipeline.Field;
 import org.ethereum.beacon.discovery.pipeline.HandlerUtil;
+import org.ethereum.beacon.discovery.schema.NodeRecord;
 
-/** Handles raw BytesValue incoming data in {@link Field#INCOMING} */
+/**
+ * Handles raw BytesValue incoming data in {@link Field#INCOMING}
+ */
 public class IncomingDataPacker implements EnvelopeHandler {
-  private static final Logger logger = LogManager.getLogger(IncomingDataPacker.class);
+
+  private static final Logger logger = LogManager.getLogger();
+  private NodeRecord homeNode;
+
+  public IncomingDataPacker(NodeRecord homeNode) {
+    this.homeNode = homeNode;
+  }
 
   @Override
   public void handle(Envelope envelope) {
@@ -32,14 +41,16 @@ public class IncomingDataPacker implements EnvelopeHandler {
             String.format(
                 "Envelope %s in IncomingDataPacker, requirements are satisfied!",
                 envelope.getId()));
-
-    UnknownPacket unknownPacket = new UnknownPacket((Bytes) envelope.get(Field.INCOMING));
+    Bytes bytes = (Bytes) envelope.get(Field.INCOMING);
+    envelope.put(Field.IP, bytes.slice(0, 4).copy());
+    envelope.put(Field.PORT, bytes.slice(4, 4).copy());
+    UnknownPacket unknownPacket = new UnknownPacket(bytes.slice(8));
     try {
       unknownPacket.verify();
       envelope.put(Field.PACKET_UNKNOWN, unknownPacket);
       logger.trace(
           () ->
-              String.format("Incoming packet %s in envelope #%s", unknownPacket, envelope.getId()));
+              String.format("On %s, Incoming packet %s in envelope #%s", homeNode.getPort(), unknownPacket, envelope.getId()));
     } catch (Exception ex) {
       envelope.put(Field.BAD_PACKET, unknownPacket);
       envelope.put(Field.BAD_EXCEPTION, ex);

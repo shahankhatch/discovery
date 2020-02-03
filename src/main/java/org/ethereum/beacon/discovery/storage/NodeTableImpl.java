@@ -118,14 +118,14 @@ public class NodeTableImpl implements NodeTable {
       if (upNodesOptional.isPresent()) {
         NodeIndex upNodes = upNodesOptional.get();
         for (Bytes currentNodeId : upNodes.getEntries()) {
-          if (logLimit == 0) {
-            res.add(getNode(currentNodeId).get());
-          } else if (Functions.logDistance(currentNodeId, nodeId) >= logLimit) {
-            limitReached = true;
-            break;
-          } else {
-            res.add(getNode(currentNodeId).get());
-          }
+//          if (logLimit == 0) {
+//            res.add(getNode(currentNodeId).orElseThrow());
+//          } else if (Functions.logDistance(currentNodeId, nodeId) >= logLimit) {
+//            limitReached = true;
+//            break;
+//          } else {
+            res.add(getNode(currentNodeId).orElseThrow());
+//          }
         }
       }
       if (downNodesOptional.isPresent()) {
@@ -134,14 +134,14 @@ public class NodeTableImpl implements NodeTable {
         // XXX: iterate in reverse order to reach logDistance limit from the right side
         for (int i = entries.size() - 1; i >= 0; i--) {
           Bytes currentNodeId = entries.get(i);
-          if (logLimit == 0) {
-            res.add(getNode(currentNodeId).get());
-          } else if (Functions.logDistance(currentNodeId, nodeId) >= logLimit) {
-            limitReached = true;
-            break;
-          } else {
-            res.add(getNode(currentNodeId).get());
-          }
+//          if (logLimit == 0) {
+//            res.add(getNode(currentNodeId).orElseThrow());
+//          } else if (Functions.logDistance(currentNodeId, nodeId) >= logLimit) {
+//            limitReached = true;
+//            break;
+//          } else {
+            res.add(getNode(currentNodeId).orElseThrow());
+//          }
         }
       }
       currentIndexUp++;

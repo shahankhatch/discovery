@@ -35,6 +35,7 @@ import org.ethereum.beacon.discovery.util.Functions;
  * other `node`
  */
 public class NodeSession {
+
   public static final int NONCE_SIZE = 12;
   public static final int REQUEST_ID_SIZE = 8;
   private static final Logger logger = LogManager.getLogger(NodeSession.class);
@@ -81,16 +82,18 @@ public class NodeSession {
   }
 
   public synchronized void updateNodeRecord(NodeRecord nodeRecord) {
+    this.nodeRecord = nodeRecord;
     logger.trace(
         () ->
             String.format(
-                "NodeRecord updated from %s to %s in session %s",
+                "On %s, NodeRecord updated from %s to %s in session %s", this.homeNodeRecord,
                 this.nodeRecord, nodeRecord, this));
-    this.nodeRecord = nodeRecord;
   }
 
   public void sendOutgoing(Packet packet) {
-    logger.trace(() -> String.format("Sending outgoing packet %s in session %s", packet, this));
+    logger.trace(() -> String
+        .format("On %s, Sending outgoing packet %s in session %s", this.homeNodeRecord, packet,
+            this));
     outgoing.accept(packet);
   }
 
@@ -105,10 +108,10 @@ public class NodeSession {
    * could ensure that restarts or even re-installs would increment the counter based on previously
    * saved state in all circumstances. The easiest to implement is a random number.
    *
-   * @param taskType Type of task, clarifies starting and reply message types
+   * @param taskType    Type of task, clarifies starting and reply message types
    * @param taskOptions Task options
-   * @param future Future to be fired when task is successfully completed or exceptionally break
-   *     when its failed
+   * @param future      Future to be fired when task is successfully completed or exceptionally
+   *                    break when its failed
    * @return info bundle.
    */
   public synchronized RequestInfo createNextRequest(
@@ -142,7 +145,9 @@ public class NodeSession {
     return requestInfo;
   }
 
-  /** Updates request info. Thread-safe. */
+  /**
+   * Updates request info. Thread-safe.
+   */
   public synchronized void updateRequestInfo(Bytes requestId, RequestInfo newRequestInfo) {
     RequestInfo oldRequestInfo = requestIdStatuses.remove(requestId);
     if (oldRequestInfo == null) {
@@ -183,19 +188,25 @@ public class NodeSession {
         });
   }
 
-  /** Generates random nonce of {@link #NONCE_SIZE} size */
+  /**
+   * Generates random nonce of {@link #NONCE_SIZE} size
+   */
   public synchronized Bytes generateNonce() {
     byte[] nonce = new byte[NONCE_SIZE];
     rnd.nextBytes(nonce);
     return Bytes.wrap(nonce);
   }
 
-  /** If true indicates that handshake is complete */
+  /**
+   * If true indicates that handshake is complete
+   */
   public synchronized boolean isAuthenticated() {
     return SessionStatus.AUTHENTICATED.equals(status);
   }
 
-  /** Resets stored authTags for this session making them obsolete */
+  /**
+   * Resets stored authTags for this session making them obsolete
+   */
   public void cleanup() {
     authTagRepo.expire(this);
   }
@@ -212,7 +223,9 @@ public class NodeSession {
     return homeNodeId;
   }
 
-  /** @return initiator key, also known as write key */
+  /**
+   * @return initiator key, also known as write key
+   */
   public Bytes getInitiatorKey() {
     return initiatorKey;
   }
@@ -221,7 +234,9 @@ public class NodeSession {
     this.initiatorKey = initiatorKey;
   }
 
-  /** @return recipient key, also known as read key */
+  /**
+   * @return recipient key, also known as read key
+   */
   public Bytes getRecipientKey() {
     return recipientKey;
   }
@@ -236,12 +251,16 @@ public class NodeSession {
     assert taskType.equals(requestInfo.getTaskType());
   }
 
-  /** Updates nodeRecord {@link NodeStatus} to ACTIVE of the node associated with this session */
+  /**
+   * Updates nodeRecord {@link NodeStatus} to ACTIVE of the node associated with this session
+   */
   public synchronized void updateLiveness() {
     NodeRecordInfo nodeRecordInfo =
         new NodeRecordInfo(getNodeRecord(), Functions.getTime(), NodeStatus.ACTIVE, 0);
-    nodeTable.save(nodeRecordInfo);
-    nodeBucketStorage.put(nodeRecordInfo);
+    if (nodeTable.getNode(nodeRecordInfo.getNode().getNodeId()).isEmpty()) {
+      nodeTable.save(nodeRecordInfo);
+      nodeBucketStorage.put(nodeRecordInfo);
+    }
   }
 
   private synchronized RequestInfo clearRequestId(Bytes requestId) {
@@ -252,7 +271,7 @@ public class NodeSession {
 
   public synchronized Optional<RequestInfo> getRequestId(Bytes requestId) {
     RequestInfo requestInfo = requestIdStatuses.get(requestId);
-    return requestId == null ? Optional.empty() : Optional.of(requestInfo);
+    return requestInfo == null ? Optional.empty() : Optional.of(requestInfo);
   }
 
   /**
@@ -309,7 +328,8 @@ public class NodeSession {
     logger.debug(
         () ->
             String.format(
-                "Switching status of node %s from %s to %s", nodeRecord, status, newStatus));
+                "On %s, switching status of node %s from %s to %s", homeNodeRecord, nodeRecord,
+                status, newStatus));
     this.status = newStatus;
   }
 

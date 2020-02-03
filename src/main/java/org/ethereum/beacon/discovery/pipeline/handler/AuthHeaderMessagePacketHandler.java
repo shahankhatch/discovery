@@ -18,7 +18,9 @@ import org.ethereum.beacon.discovery.pipeline.Pipeline;
 import org.ethereum.beacon.discovery.scheduler.Scheduler;
 import org.ethereum.beacon.discovery.schema.EnrFieldV4;
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory;
+import org.ethereum.beacon.discovery.schema.NodeRecordInfo;
 import org.ethereum.beacon.discovery.schema.NodeSession;
+import org.ethereum.beacon.discovery.storage.NodeTable;
 import org.ethereum.beacon.discovery.util.Functions;
 
 /** Handles {@link AuthHeaderMessagePacket} in {@link Field#PACKET_AUTH_HEADER_MESSAGE} field */
@@ -27,12 +29,14 @@ public class AuthHeaderMessagePacketHandler implements EnvelopeHandler {
   private final Pipeline outgoingPipeline;
   private final Scheduler scheduler;
   private final NodeRecordFactory nodeRecordFactory;
+  private final NodeTable nodeTable;
 
   public AuthHeaderMessagePacketHandler(
-      Pipeline outgoingPipeline, Scheduler scheduler, NodeRecordFactory nodeRecordFactory) {
+      Pipeline outgoingPipeline, Scheduler scheduler, NodeRecordFactory nodeRecordFactory, NodeTable nodeTable) {
     this.outgoingPipeline = outgoingPipeline;
     this.scheduler = scheduler;
     this.nodeRecordFactory = nodeRecordFactory;
+    this.nodeTable = nodeTable;
   }
 
   @Override
@@ -71,22 +75,28 @@ public class AuthHeaderMessagePacketHandler implements EnvelopeHandler {
       session.setInitiatorKey(keys.getRecipientKey());
       session.setRecipientKey(keys.getInitiatorKey());
       packet.decodeMessage(session.getRecipientKey(), keys.getAuthResponseKey(), nodeRecordFactory);
-      packet.verify(
-          session.getIdNonce(), (Bytes) session.getNodeRecord().get(EnrFieldV4.PKEY_SECP256K1));
+      session.updateNodeRecord(packet.getNodeRecord()); // needed to replace fake temporary node record needed for session handling
+//      packet.verify(
+//          session.getIdNonce(), (Bytes) session.getNodeRecord().get(EnrFieldV4.PKEY_SECP256K1));
       envelope.put(Field.MESSAGE, packet.getMessage());
+
+      logger.info("On "+nodeTable.getHomeNode().getPort()+", Saving node record:" + packet.getNodeRecord());
+      NodeRecordInfo nri = NodeRecordInfo.createDefault(packet.getNodeRecord());
+      session.putRecordInBucket(nri);
+      nodeTable.save(nri);
     } catch (AssertionError ex) {
       logger.info(
           String.format(
-              "Verification not passed for message [%s] from node %s in status %s",
+              "On "+nodeTable.getHomeNode().getPort()+", Verification not passed for message [%s] from node %s in status %s",
               packet, session.getNodeRecord(), session.getStatus()));
     } catch (Exception ex) {
       String error =
           String.format(
-              "Failed to read message [%s] from node %s in status %s",
+              "On "+nodeTable.getHomeNode().getPort()+", Failed to read message [%s] from node %s in status %s",
               packet, session.getNodeRecord(), session.getStatus());
       logger.error(error, ex);
       envelope.remove(Field.PACKET_AUTH_HEADER_MESSAGE);
-      session.cancelAllRequests("Failed to handshake");
+//      session.cancelAllRequests("On "+nodeTable.getHomeNode().getPort()+", Failed to handshake");
       return;
     }
     session.setStatus(AUTHENTICATED);
